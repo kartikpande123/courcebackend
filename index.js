@@ -13,11 +13,11 @@ const upload = multer({
 });
 
 // Middleware
-const cors = require('cors');
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://successonlinecourse.in'],
+  origin: '*', // Allows all domains (use cautiously)
   credentials: true,
 }));
+
 
 
 
