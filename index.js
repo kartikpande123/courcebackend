@@ -13,32 +13,30 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors({
-  origin: '*', // Allows all domains (use cautiously)
-  credentials: true,
-}));
-
-
+app.use(express.json({limit: '5mb'}));
+app.use(cors())
 
 
 // Firestore setup
 const firestore = admin.firestore();
 const realtimeDatabase = admin.database();
 
-// Reference to categories in realtime database
-const categoriesRef = realtimeDatabase.ref('categories');
+
 
 // Root route
 app.get("/", (req, res) => {
   res.send("Node.js backend is running successfully!");
 });
 
+// Reference to categories in realtime database
+const categoriesRef = realtimeDatabase.ref('categories');
 
 // category apis
 // Create category
 app.post("/api/categories", async (req, res) => {
   try {
     const { name } = req.body;
+
     if (!name) {
       return res.status(400).json({ error: "Category name is required" });
     }
@@ -79,6 +77,7 @@ app.get("/api/categories", async (req, res) => {
   }
 });
 
+
 // Update category
 app.put("/api/categories/:id", async (req, res) => {
   try {
@@ -106,6 +105,7 @@ app.put("/api/categories/:id", async (req, res) => {
 app.delete("/api/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
+
     await categoriesRef.child(id).remove();
     res.json({ message: "Category deleted successfully" });
   } catch (error) {
@@ -790,7 +790,291 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 
+//Attendance apis
+app.post('/api/attendance', async (req, res) => {
+  try {
+      const { date, time, attendance } = req.body;
 
+      // Validate request data
+      if (!date || !time || !attendance || !Array.isArray(attendance)) {
+          return res.status(400).json({
+              success: false,
+              message: 'Invalid request data. Required: date, time, and attendance array'
+          });
+      }
+
+      // Format date for database key (remove special characters)
+      const dateKey = date.replace(/[-/]/g, ''); // e.g., "2024-01-20" becomes "20240120"
+
+      // Group attendance data by course
+      const attendanceByCourse = attendance.reduce((acc, record) => {
+          const { courseName, applicationId, status } = record;
+          
+          if (!acc[courseName]) {
+              acc[courseName] = {};
+          }
+          
+          if (!acc[courseName][dateKey]) {
+              acc[courseName][dateKey] = {
+                  date,
+                  time,
+                  students: {}
+              };
+          }
+          
+          acc[courseName][dateKey].students[applicationId] = {
+              status,
+              timestamp: Date.now()
+          };
+          
+          return acc;
+      }, {});
+
+      // Prepare database updates
+      const updates = {};
+      
+      // Structure the updates object for batch update
+      Object.entries(attendanceByCourse).forEach(([courseName, dateData]) => {
+          Object.entries(dateData).forEach(([dateKey, data]) => {
+              updates[`Attendance/${courseName}/${dateKey}`] = data;
+          });
+      });
+
+      // Perform batch update to Realtime Database
+      await realtimeDatabase.ref().update(updates);
+
+      // Calculate attendance summary for response
+      const summary = Object.entries(attendanceByCourse).map(([courseName, dateData]) => {
+          const dateRecord = Object.values(dateData)[0];
+          const students = dateRecord.students;
+          const totalStudents = Object.keys(students).length;
+          const presentCount = Object.values(students)
+              .filter(s => s.status === 'present').length;
+
+          return {
+              courseName,
+              date,
+              totalStudents,
+              present: presentCount,
+              absent: totalStudents - presentCount,
+              attendancePercentage: ((presentCount / totalStudents) * 100).toFixed(2) + '%'
+          };
+      });
+
+      // Send success response
+      res.status(200).json({
+          success: true,
+          message: 'Attendance recorded successfully',
+          summary
+      });
+
+  } catch (error) {
+      console.error('Error recording attendance:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to record attendance',
+          error: error.message
+      });
+  }
+});
+
+// GET endpoints for fetching attendance data
+app.get('/api/attendance', async (req, res) => {
+  try {
+    const { date, course, startDate, endDate } = req.query;
+
+    // Base reference to attendance collection
+    let dbRef = realtimeDatabase.ref('Attendance');
+
+    // If specific course is requested
+    if (course) {
+      dbRef = dbRef.child(course);
+    }
+
+    // Fetch data based on query parameters
+    let snapshot;
+    if (date) {
+      // Format date for database key
+      const dateKey = date.replace(/[-/]/g, '');
+      snapshot = await dbRef.child(dateKey).once('value');
+    } else if (startDate && endDate) {
+      // Format dates for range query
+      const startKey = startDate.replace(/[-/]/g, '');
+      const endKey = endDate.replace(/[-/]/g, '');
+      snapshot = await dbRef
+        .orderByKey()
+        .startAt(startKey)
+        .endAt(endKey)
+        .once('value');
+    } else {
+      // Fetch all attendance records
+      snapshot = await dbRef.once('value');
+    }
+
+    const attendanceData = snapshot.val();
+
+    // If no data found
+    if (!attendanceData) {
+      return res.status(404).json({
+        success: false,
+        message: 'No attendance records found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Process and format the data
+    const formattedData = {};
+    
+    // Helper function to calculate attendance statistics
+    const calculateStats = (students) => {
+      const totalStudents = Object.keys(students).length;
+      const presentCount = Object.values(students)
+        .filter(s => s.status === 'present').length;
+      return {
+        totalStudents,
+        present: presentCount,
+        absent: totalStudents - presentCount,
+        attendancePercentage: ((presentCount / totalStudents) * 100).toFixed(2) + '%'
+      };
+    };
+
+    // Format the response based on query type
+    if (course && date) {
+      // Single course, single date
+      formattedData[course] = {
+        [date]: {
+          ...attendanceData,
+          stats: calculateStats(attendanceData.students)
+        }
+      };
+    } else if (course) {
+      // Single course, all dates
+      formattedData[course] = Object.entries(attendanceData).reduce((acc, [dateKey, data]) => {
+        acc[dateKey] = {
+          ...data,
+          stats: calculateStats(data.students)
+        };
+        return acc;
+      }, {});
+    } else {
+      // All courses
+      Object.entries(attendanceData).forEach(([courseName, courseDates]) => {
+        formattedData[courseName] = Object.entries(courseDates).reduce((acc, [dateKey, data]) => {
+          acc[dateKey] = {
+            ...data,
+            stats: calculateStats(data.students)
+          };
+          return acc;
+        }, {});
+      });
+    }
+
+    // Send response
+    res.status(200).json({
+      success: true,
+      data: formattedData,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        query: {
+          course,
+          date,
+          startDate,
+          endDate
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch attendance records',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Additional endpoint to get attendance by student ID
+app.get('/api/attendance/student/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const dbRef = realtimeDatabase.ref('Attendance');
+    const snapshot = await dbRef.once('value');
+    const allData = snapshot.val();
+
+    if (!allData) {
+      return res.status(404).json({
+        success: false,
+        message: 'No attendance records found',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Find all attendance records for the student
+    const studentRecords = {};
+    Object.entries(allData).forEach(([course, courseDates]) => {
+      Object.entries(courseDates).forEach(([dateKey, dateData]) => {
+        if (dateData.students && dateData.students[studentId]) {
+          if (!studentRecords[course]) {
+            studentRecords[course] = {};
+          }
+          // Apply date range filter if provided
+          const currentDate = dateData.date;
+          if ((!startDate || currentDate >= startDate) && 
+              (!endDate || currentDate <= endDate)) {
+            studentRecords[course][dateKey] = {
+              date: dateData.date,
+              time: dateData.time,
+              status: dateData.students[studentId].status,
+              timestamp: dateData.students[studentId].timestamp
+            };
+          }
+        }
+      });
+    });
+
+    // Calculate attendance statistics
+    const statistics = Object.entries(studentRecords).reduce((acc, [course, dates]) => {
+      const totalDays = Object.keys(dates).length;
+      const presentDays = Object.values(dates)
+        .filter(record => record.status === 'present').length;
+      
+      acc[course] = {
+        totalDays,
+        presentDays,
+        absentDays: totalDays - presentDays,
+        attendancePercentage: ((presentDays / totalDays) * 100).toFixed(2) + '%'
+      };
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      success: true,
+      studentId,
+      data: studentRecords,
+      statistics,
+      metadata: {
+        timestamp: new Date().toISOString(),
+        query: {
+          startDate,
+          endDate
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching student attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch student attendance records',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 
 // Start the server/api
