@@ -14,7 +14,11 @@ const upload = multer({
 
 // Middleware
 app.use(express.json({limit: '5mb'}));
-app.use(cors())
+app.use(cors({
+  origin: '*', // or better: "http://localhost:3000" for local testing
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Cache-Control']
+}));
 
 
 // Firestore setup
