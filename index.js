@@ -37,7 +37,7 @@ const categoriesRef = realtimeDatabase.ref('categories');
 
 // category apis
 // Create category
-app.post("/api/categories", async (req, res) => {
+app.post("/course-api/categories", async (req, res) => {
   try {
     const { name } = req.body;
 
@@ -62,7 +62,7 @@ app.post("/api/categories", async (req, res) => {
 });
 
 // Get all categories
-app.get("/api/categories", async (req, res) => {
+app.get("/course-api/categories", async (req, res) => {
   try {
     const snapshot = await categoriesRef.once('value');
     const categories = [];
@@ -83,7 +83,7 @@ app.get("/api/categories", async (req, res) => {
 
 
 // Update category
-app.put("/api/categories/:id", async (req, res) => {
+app.put("/course-api/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -106,7 +106,7 @@ app.put("/api/categories/:id", async (req, res) => {
 });
 
 // Delete category
-app.delete("/api/categories/:id", async (req, res) => {
+app.delete("/course-api/categories/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -121,7 +121,7 @@ app.delete("/api/categories/:id", async (req, res) => {
 
 //Add cource apis
 // Modified course POST API
-app.post("/api/courses", async (req, res) => {
+app.post("/course-api/courses", async (req, res) => {
   try {
     // Validate the base64 image size
     const base64String = req.body.courseImage;
@@ -161,7 +161,7 @@ app.post("/api/courses", async (req, res) => {
 });
 
 // Modified course GET API
-app.get("/api/courses", async (req, res) => {
+app.get("/course-api/courses", async (req, res) => {
   try {
     const coursesSnapshot = await firestore.collection('courses').get();
     const courses = [];
@@ -181,7 +181,7 @@ app.get("/api/courses", async (req, res) => {
 });
 
 // Modified course PUT API
-app.put("/api/courses/:id", async (req, res) => {
+app.put("/course-api/courses/:id", async (req, res) => {
   try {
     const courseData = {
       title: req.body.title,
@@ -209,7 +209,7 @@ app.put("/api/courses/:id", async (req, res) => {
   }
 });
 
-app.delete("/api/courses/:id", async (req, res) => {
+app.delete("/course-api/courses/:id", async (req, res) => {
   try {
     await firestore.collection('courses').doc(req.params.id).delete();
     res.json({ message: 'Course deleted successfully' });
@@ -220,7 +220,7 @@ app.delete("/api/courses/:id", async (req, res) => {
 });
 
 // In your Express backend
-app.get("/api/courses/:id", async (req, res) => {
+app.get("/course-api/courses/:id", async (req, res) => {
   try {
     const courseDoc = await firestore.collection('courses').doc(req.params.id).get();
     
@@ -252,7 +252,7 @@ app.get("/api/courses/:id", async (req, res) => {
 });
 
 // Admin Notification Apis 
-app.get('/api/notifications', async (req, res) => {
+app.get('/course-api/notifications', async (req, res) => {
   try {
     const notificationsRef = realtimeDatabase.ref('notifications');
     const snapshot = await notificationsRef.once('value');
@@ -275,7 +275,7 @@ app.get('/api/notifications', async (req, res) => {
 });
 
 // Create new notification
-app.post('/api/notifications', async (req, res) => {
+app.post('/course-api/notifications', async (req, res) => {
   try {
     const { message } = req.body;
     const timestamp = new Date().toISOString();
@@ -299,7 +299,7 @@ app.post('/api/notifications', async (req, res) => {
 });
 
 // Update notification
-app.put('/api/notifications/:id', async (req, res) => {
+app.put('/course-api/notifications/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { message } = req.body;
@@ -319,7 +319,7 @@ app.put('/api/notifications/:id', async (req, res) => {
 });
 
 // Delete notification
-app.delete('/api/notifications/:id', async (req, res) => {
+app.delete('/course-api/notifications/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const notificationRef = realtimeDatabase.ref(`notifications/${id}`);
@@ -334,7 +334,7 @@ app.delete('/api/notifications/:id', async (req, res) => {
 
 
 //Help Apis
-app.get('/api/help-requests', async (req, res) => {
+app.get('/course-api/help-requests', async (req, res) => {
   try {
     // Get all documents from the helpRequests collection
     const helpRequestsSnapshot = await firestore.collection('helpRequests')
@@ -376,7 +376,7 @@ app.get('/api/help-requests', async (req, res) => {
 });
 
 
-app.delete('/api/help-requests/:id', async (req, res) => {
+app.delete('/course-api/help-requests/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -402,7 +402,7 @@ app.delete('/api/help-requests/:id', async (req, res) => {
 });
 
 // Create new help request
-app.post('/api/help-requests', async (req, res) => {
+app.post('/course-api/help-requests', async (req, res) => {
   try {
     // Validate the base64 image size
     const base64String = req.body.imageBase64;
@@ -446,7 +446,7 @@ app.post('/api/help-requests', async (req, res) => {
 const applicationsRef = realtimeDatabase.ref('applications');
 
 //Application apis
-app.post('/api/applications', async (req, res) => {
+app.post('/course-api/applications', async (req, res) => {
   try {
     const applicationData = req.body;
     
@@ -500,7 +500,7 @@ app.post('/api/applications', async (req, res) => {
 });
 
 // GET endpoint to fetch all applications
-app.get('/api/applications', async (req, res) => {
+app.get('/course-api/applications', async (req, res) => {
   try {
     const snapshot = await applicationsRef.once('value');
     const applications = snapshot.val();
@@ -518,7 +518,7 @@ app.get('/api/applications', async (req, res) => {
   }
 });
 
-app.get('/api/applications/:applicationId', async (req, res) => {
+app.get('/course-api/applications/:applicationId', async (req, res) => {
   try {
     const { applicationId } = req.params;
     const snapshot = await applicationsRef.child(applicationId).once('value');
@@ -544,7 +544,7 @@ app.get('/api/applications/:applicationId', async (req, res) => {
   }
 });
 
-app.put('/api/applications/:applicationId/status', async (req, res) => {
+app.put('/course-api/applications/:applicationId/status', async (req, res) => {
   const { applicationId } = req.params;
   const { status } = req.body;
 
@@ -584,7 +584,7 @@ app.put('/api/applications/:applicationId/status', async (req, res) => {
 
 
 //payment page
-app.post('/api/payments', async (req, res) => {
+app.post('/course-api/payments', async (req, res) => {
   try {
     const { 
       applicationId, 
@@ -627,7 +627,7 @@ app.post('/api/payments', async (req, res) => {
 });
 
 // PATCH endpoint to update fee amount
-app.patch('/api/payments/:courseId/:applicationId', async (req, res) => {
+app.patch('/course-api/payments/:courseId/:applicationId', async (req, res) => {
   try {
     const { courseId, applicationId } = req.params;
     const { feeAmount } = req.body;
@@ -655,7 +655,7 @@ app.patch('/api/payments/:courseId/:applicationId', async (req, res) => {
 });
 
 // GET endpoint to fetch payment details
-app.get('/api/payments/:courseId/:applicationId', async (req, res) => {
+app.get('/course-api/payments/:courseId/:applicationId', async (req, res) => {
   try {
     const { courseId, applicationId } = req.params;
 
@@ -690,7 +690,7 @@ app.get('/api/payments/:courseId/:applicationId', async (req, res) => {
 //Gmeet Apis
 // Save Google Meet link
 // Save Google Meet link with course title
-app.post("/api/courses/meet", async (req, res) => {
+app.post("/course-api/courses/meet", async (req, res) => {
   try {
     const { courseId, courseTitle, meetLink } = req.body;
     
@@ -722,7 +722,7 @@ app.post("/api/courses/meet", async (req, res) => {
 });
 
 
-app.get("/api/meetlinks/all", async (req, res) => {
+app.get("/course-api/meetlinks/all", async (req, res) => {
   try {
     // Get reference to the GoogleMeet node
     const meetRef = admin.database().ref('GoogleMeet');
@@ -767,7 +767,7 @@ app.get("/api/meetlinks/all", async (req, res) => {
 });
 
 //Admin Logi Api
-app.post('/api/admin/login', async (req, res) => {
+app.post('/course-api/admin/login', async (req, res) => {
   try {
     const { userId, password } = req.body;
     
@@ -795,7 +795,7 @@ app.post('/api/admin/login', async (req, res) => {
 
 
 //Attendance apis
-app.post('/api/attendance', async (req, res) => {
+app.post('/course-api/attendance', async (req, res) => {
   try {
       const { date, time, attendance } = req.body;
 
@@ -883,7 +883,7 @@ app.post('/api/attendance', async (req, res) => {
 });
 
 // GET endpoints for fetching attendance data
-app.get('/api/attendance', async (req, res) => {
+app.get('/course-api/attendance', async (req, res) => {
   try {
     const { date, course, startDate, endDate } = req.query;
 
@@ -1000,7 +1000,7 @@ app.get('/api/attendance', async (req, res) => {
 });
 
 // Additional endpoint to get attendance by student ID
-app.get('/api/attendance/student/:studentId', async (req, res) => {
+app.get('/course-api/attendance/student/:studentId', async (req, res) => {
   try {
     const { studentId } = req.params;
     const { startDate, endDate } = req.query;
