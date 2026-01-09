@@ -446,12 +446,23 @@ app.post('/course-api/help-requests', async (req, res) => {
 const applicationsRef = realtimeDatabase.ref('applications');
 
 //Application apis
+// Application apis
 app.post('/course-api/applications', async (req, res) => {
   try {
     const applicationData = req.body;
     
     // Validate required fields
-    const requiredFields = ['applicationId', 'name', 'phone', 'address', 'city', 'state', 'pincode', 'dob'];
+    const requiredFields = [
+      'applicationId',
+      'name',
+      'phone',
+      'address',
+      'city',
+      'state',
+      'pincode',
+      'age' // replaced dob with age
+    ];
+
     const missingFields = requiredFields.filter(field => !applicationData[field]);
     
     if (missingFields.length > 0) {
@@ -474,6 +485,14 @@ app.post('/course-api/applications', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Invalid pincode format'
+      });
+    }
+
+    // Validate age
+    if (!Number.isInteger(Number(applicationData.age)) || applicationData.age <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid age value'
       });
     }
 
